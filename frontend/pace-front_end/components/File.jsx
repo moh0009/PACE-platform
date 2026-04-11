@@ -16,7 +16,12 @@ export default function File({ files, onRemove }) {
 
                 const formatTime = (ms) => {
                     if (ms < 1000) return `${Math.round(ms)}ms`;
-                    return `${(ms / 1000).toFixed(1)}s`;
+                    const totalSeconds = ms / 1000;
+                    if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`;
+                    
+                    const minutes = Math.floor(totalSeconds / 60);
+                    const seconds = Math.floor(totalSeconds % 60);
+                    return `${minutes}m ${seconds}s`;
                 };
 
                 const expPhaseTime = formatTime(file.expectedTimeMs);

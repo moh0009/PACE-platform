@@ -3,6 +3,7 @@ import { useDropzone } from "react-dropzone";
 import { Play, Upload, Database } from "lucide-react";
 import { cn } from "../lib/utils";
 import File from "./File";
+import { useNotification } from "../context/NotificationContext";
 
 /**
  * UploadSection Component
@@ -13,6 +14,7 @@ export default function UploadSection() {
   const [files, setFiles] = useState([]);
   const chunkSize = 5 * 1024 * 1024; // 5MB chunk size for multipart uploads
   const url = new URL("http://localhost:8080/api/");
+  const { showNotification } = useNotification();
 
   /**
    * Handles files dropped into the dropzone.
@@ -24,7 +26,7 @@ export default function UploadSection() {
       const updatedFiles = [...prev];
       acceptedFiles.forEach(file => {
         const sizeMB = file.size / (1024 * 1024);
-        const expectedTimeMs = Math.max(1500, sizeMB * 10);
+        const expectedTimeMs = Math.max(2000, sizeMB * 500);
         
         const newFile = {
           id: `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -144,10 +146,12 @@ export default function UploadSection() {
         ws.onopen = async () => {
           await uploadFile(file);
           resolve({ file, ws });
+          showNotification({ message: "Uploading file " + file.name, type: "info" });
         };
 
         ws.onerror = (err) => {
           console.error("WS error for", file.name, err);
+          showNotification({ message: "Error uploading file " + file.name, type: "error" });
           resolve({ file, ws, error: true }); 
         };
       });
@@ -173,9 +177,11 @@ export default function UploadSection() {
               ws.close();
               resolve();
             }, 100);
+            showNotification({ message: "file " + file.name + " has been processed successfully", type: "success" });
           }
         };
         ws.addEventListener("message", handleMsg);
+        showNotification({ message: "file " + file.name + " has been uploaded successfully", type: "success" });
 
         fetch(url.toString() + "process", {
           method: "POST",
@@ -190,6 +196,7 @@ export default function UploadSection() {
           console.error("Failed to start processing for", file.name, err);
           resolve();
         });
+        showNotification({ message: "Processing file " + file.name, type: "info" });
       });
     }));
   };

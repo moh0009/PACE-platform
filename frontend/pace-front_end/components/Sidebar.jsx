@@ -1,12 +1,11 @@
 import React from "react";
 import { motion } from "motion/react";
-import { Upload, Users, LineChart, HelpCircle } from "lucide-react";
+import { Upload, Users, Github } from "lucide-react";
 import { cn } from "../lib/utils";
 
 const navItems = [
   { name: "Upload file", icon: Upload },
   { name: "Students", icon: Users },
-  { name: "Analytics", icon: LineChart },
 ];
 
 export default function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen }) {
@@ -40,8 +39,8 @@ export default function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, set
 
       <div className="mt-auto pt-6 space-y-1">
         <button className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:text-slate-900 transition-colors w-full text-left">
-          <HelpCircle size={20} />
-          <span className="text-sm">Support</span>
+          <Github size={20} />
+          <span className="text-sm">Repository</span>
         </button>
       </div>
     </>

@@ -1,20 +1,23 @@
 import React from 'react'
 import Select from 'react-select'
 
-const options = ['All Subjects', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'History', 'English Literature', 'Computer Science', 'Art', 'Music', 'Geography']
-
-const Dropdown = () => (
-    <div className="w-full sm:w-[250px]">
+const Dropdown = ({ options, value, onChange, placeholder, className, menuPlacement = "auto" }) => (
+    <div className={className || "w-full sm:w-[250px]"}>
         <Select
-            options={options.map(option => ({ value: option, label: option }))}
-            placeholder="All Subjects"
+            options={options}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            menuPlacement={menuPlacement}
+            menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
             styles={{
+                menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                 control: (base, state) => ({
                     ...base,
                     backgroundColor: 'white',
                     borderColor: state.isFocused ? '#6366f1' : '#e2e8f0',
                     borderRadius: '0.75rem',
-                    minHeight: '44px',
+                    minHeight: '40px',
                     boxShadow: state.isFocused ? '0 0 0 2px rgba(99, 102, 241, 0.2)' : 'none',
                     '&:hover': {
                         borderColor: state.isFocused ? '#6366f1' : '#cbd5e1'
@@ -68,4 +71,4 @@ const Dropdown = () => (
     </div>
 )
 
-export default Dropdown
+export default Dropdown;
