@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/moh0009/file-upload-fullstack-task/backend/queue"
+	"github.com/moh0009/PACE-platform/backend/queue"
 	"github.com/redis/go-redis/v9"
 )
 

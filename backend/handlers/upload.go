@@ -10,11 +10,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/moh0009/file-upload-fullstack-task/backend/config"
-	apperrors "github.com/moh0009/file-upload-fullstack-task/backend/errors"
-	"github.com/moh0009/file-upload-fullstack-task/backend/progress"
-	"github.com/moh0009/file-upload-fullstack-task/backend/queue"
-	"github.com/moh0009/file-upload-fullstack-task/backend/worker"
+	"github.com/moh0009/PACE-platform/backend/config"
+	apperrors "github.com/moh0009/PACE-platform/backend/errors"
+	"github.com/moh0009/PACE-platform/backend/progress"
+	"github.com/moh0009/PACE-platform/backend/queue"
+	"github.com/moh0009/PACE-platform/backend/worker"
 	"github.com/redis/go-redis/v9"
 )
 

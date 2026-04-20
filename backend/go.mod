@@ -1,4 +1,4 @@
-module github.com/moh0009/file-upload-fullstack-task/backend
+module github.com/moh0009/PACE-platform/backend
 
 go 1.26.1
 

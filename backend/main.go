@@ -10,8 +10,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/moh0009/file-upload-fullstack-task/backend/config"
-	"github.com/moh0009/file-upload-fullstack-task/backend/handlers"
+	"github.com/moh0009/PACE-platform/backend/config"
+	"github.com/moh0009/PACE-platform/backend/handlers"
 )
 
 func main() {

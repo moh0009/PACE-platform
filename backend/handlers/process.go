@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	apperrors "github.com/moh0009/file-upload-fullstack-task/backend/errors"
-	"github.com/moh0009/file-upload-fullstack-task/backend/progress"
-	"github.com/moh0009/file-upload-fullstack-task/backend/queue"
+	apperrors "github.com/moh0009/PACE-platform/backend/errors"
+	"github.com/moh0009/PACE-platform/backend/progress"
+	"github.com/moh0009/PACE-platform/backend/queue"
 	"golang.org/x/sync/errgroup"
 )
 

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	apperrors "github.com/moh0009/file-upload-fullstack-task/backend/errors"
+	apperrors "github.com/moh0009/PACE-platform/backend/errors"
 )
 
 type StudentDB struct {
