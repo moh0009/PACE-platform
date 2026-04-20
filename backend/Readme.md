@@ -1,4 +1,4 @@
-# Backend — Setup & Developer Guide
+# PACE platform backend
 
 The Go backend serves the REST API, handles chunked file uploads, streams progress over WebSocket, and processes CSV data into PostgreSQL using a Redis-backed priority queue and worker pool.
 
@@ -16,30 +16,30 @@ The Go backend serves the REST API, handles chunked file uploads, streams progre
 
 ## Prerequisites
 
-| Tool | Version |
-|------|---------|
-| Go | 1.21+ |
+| Tool                    | Version            |
+| ----------------------- | ------------------ |
+| Go                      | 1.21+              |
 | Docker + Docker Compose | Any recent version |
-| PostgreSQL | 15 (via Docker) |
-| Redis | 7 (via Docker) |
+| PostgreSQL              | 15 (via Docker)    |
+| Redis                   | 7 (via Docker)     |
 
 ---
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DB_HOST` | `localhost` | PostgreSQL host |
-| `DB_PORT` | `5432` | PostgreSQL port |
-| `DB_USER` | `postgres` | Database user |
-| `DB_PASSWORD` | `postgres` | Database password |
-| `DB_NAME` | `students_db` | Database name |
-| `REDIS_ADDR` | `localhost:6379` | Redis address |
-| `SERVER_PORT` | `8080` | HTTP listen port |
-| `UPLOADS_DIR` | `./uploads` | Temp storage for uploaded chunks |
-| `MAX_FILE_SIZE` | `2147483648` | Max per-chunk size in bytes (2 GB) |
-| `WORKER_COUNT` | `4` | Parallel CSV processing workers |
-| `QUEUE_MAX_RETRIES` | `3` | Max job retry attempts on failure |
+| Variable            | Default          | Description                        |
+| ------------------- | ---------------- | ---------------------------------- |
+| `DB_HOST`           | `localhost`      | PostgreSQL host                    |
+| `DB_PORT`           | `5432`           | PostgreSQL port                    |
+| `DB_USER`           | `postgres`       | Database user                      |
+| `DB_PASSWORD`       | `postgres`       | Database password                  |
+| `DB_NAME`           | `students_db`    | Database name                      |
+| `REDIS_ADDR`        | `localhost:6379` | Redis address                      |
+| `SERVER_PORT`       | `8080`           | HTTP listen port                   |
+| `UPLOADS_DIR`       | `./uploads`      | Temp storage for uploaded chunks   |
+| `MAX_FILE_SIZE`     | `2147483648`     | Max per-chunk size in bytes (2 GB) |
+| `WORKER_COUNT`      | `4`              | Parallel CSV processing workers    |
+| `QUEUE_MAX_RETRIES` | `3`              | Max job retry attempts on failure  |
 
 Copy `.env.example` (if provided) or export the variables manually.
 
@@ -89,33 +89,37 @@ main.go
 
 ### Key Packages
 
-| Package | Responsibility |
-|---------|---------------|
-| `config` | Load env, init DB pool + Redis, auto-migrate schema |
-| `handlers` | HTTP handler functions — input validation, error responses |
-| `errors` | Typed `AppError` struct + `Respond()` helper for consistent JSON errors |
-| `progress` | `RedisProgressHub` — publish/subscribe progress payloads via Redis |
-| `queue` | `RedisQueue` — sorted-set priority queue backed by Redis |
-| `worker` | `WorkerManager` — goroutine pool that dequeues and processes jobs |
+| Package    | Responsibility                                                          |
+| ---------- | ----------------------------------------------------------------------- |
+| `config`   | Load env, init DB pool + Redis, auto-migrate schema                     |
+| `handlers` | HTTP handler functions — input validation, error responses              |
+| `errors`   | Typed `AppError` struct + `Respond()` helper for consistent JSON errors |
+| `progress` | `RedisProgressHub` — publish/subscribe progress payloads via Redis      |
+| `queue`    | `RedisQueue` — sorted-set priority queue backed by Redis                |
+| `worker`   | `WorkerManager` — goroutine pool that dequeues and processes jobs       |
 
 ---
 
 ## Database & Redis Structure
+
 The Postgres schema uses two tables and is created automatically on startup:
 
 `students_staging`: Used for intermediate fast copy from CSV.
+
 - `id`: SERIAL PRIMARY KEY
 - `name`: TEXT
 - `subject`: TEXT
 - `grade`: TEXT (handled as text to accommodate unparsed row data during CSV load)
 
 `students`: Final validated table for the web application.
+
 - `id`: SERIAL PRIMARY KEY
 - `name`: TEXT
 - `subject`: TEXT
 - `grade`: INTEGER
 
 **Redis Usage**:
+
 - `csv:queue:priority`: Sorted sets (ZSET) holding jobs ordered by insertion time.
 - `csv:jobs`: Hashes (HSET) tracking job JSON metadata.
 - `csv:workers`: Hashes (HSET) tracking heartbeat timestamps of workers.

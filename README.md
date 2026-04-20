@@ -1,4 +1,4 @@
-# PACE Platform — Root README
+# PACE Platform
 
 A full-stack web application that ingests large CSV files containing student grade data, displays real-time upload and processing progress, and exposes a rich data table with filtering, sorting, and pagination.
 

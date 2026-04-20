@@ -1,4 +1,4 @@
-# Frontend — Setup & Developer Guide
+# PACE platform frontend
 
 The frontend is a Next.js 15 (App Router) application that provides the PACE Platform dashboard: a drag-and-drop file upload section with real-time progress, and a filterable, sortable, paginated student data table.
 
@@ -16,17 +16,17 @@ The frontend is a Next.js 15 (App Router) application that provides the PACE Pla
 
 ## Prerequisites
 
-| Tool | Version |
-|------|---------|
-| Node.js | 18+ |
-| npm | 9+ |
+| Tool    | Version |
+| ------- | ------- |
+| Node.js | 18+     |
+| npm     | 9+      |
 
 ---
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+| Variable              | Default                     | Description                    |
+| --------------------- | --------------------------- | ------------------------------ |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8080/api` | Base URL of the Go backend API |
 
 Create a `.env.local` file in `frontend/pace-front_end/` if you need to override the default:
@@ -51,11 +51,11 @@ npm run dev       # starts on http://localhost:3000
 
 ## Available Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start development server with hot reload |
-| `npm run build` | Build for production |
-| `npm run start` | Serve the production build |
+| Script            | Description                                         |
+| ----------------- | --------------------------------------------------- |
+| `npm run dev`     | Start development server with hot reload            |
+| `npm run build`   | Build for production                                |
+| `npm run start`   | Serve the production build                          |
 | `npm run analyze` | Build + open interactive bundle analyser in browser |
 
 ---
@@ -93,18 +93,23 @@ context/
 ## Key Design Decisions
 
 ### Chunked Upload
+
 Files are split into 5 MB chunks and uploaded sequentially via `XMLHttpRequest`. This allows accurate per-chunk progress reporting and avoids HTTP request body size limits on the server.
 
 ### WebSocket Reconnection
+
 `ManagedWebSocket` (`lib/websocket.js`) wraps the native `WebSocket` with:
+
 - Exponential back-off: `delay = min(baseDelay × 2^attempt, 30_000)` ms + up to 500 ms jitter.
 - Maximum 5 retry attempts before marking the file as errored.
 - Automatic cleanup via `destroy()` when the file reaches `Complete` or `Error` state.
 
 ### State Persistence
+
 `FileContext` serialises the file list to `localStorage` (excluding the `File` blob, which cannot be serialised). On reload, files in `Uploading` / `Processing` state reconnect their WebSocket automatically. Files in `Pending` state that have lost their blob show a "Session Expired" badge with instructions to re-add them.
 
 ### Performance
+
 - `StudentsTable` uses server-side keyset pagination — the DOM never holds more than 100 rows.
 - `fetchStudents`, `fetchCount`, and all event handlers are wrapped in `useCallback`.
 - The table body is wrapped in `useMemo` to skip recalculation on unrelated state changes.
