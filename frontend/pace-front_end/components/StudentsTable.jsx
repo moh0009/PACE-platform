@@ -62,11 +62,17 @@ export default function StudentsTable() {
         `/students?pageSize=${pageSize}${sortQuery}${cursorParams}${nameQuery}${subjectQuery}${gradeQuery}`,
         "GET", null, signal
       );
-      if (data === null) return; // aborted or errored
+      if (data === null) return; // aborted
+      
       if (Array.isArray(data)) {
         setStudents(data);
         setCurrentPage(page);
       } else {
+        setStudents([]);
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error("Failed to fetch students", err);
         setStudents([]);
       }
     } finally {
@@ -82,24 +88,44 @@ export default function StudentsTable() {
     if (minG !== null && minG !== undefined && minG !== 0) queryParams += `&gradeMin=${minG}`;
     if (maxG !== null && maxG !== undefined && maxG !== 100) queryParams += `&gradeMax=${maxG}`;
 
-    const data = await fetchAPI(`/students/count?${queryParams}`, "GET", null, signal);
-    if (data === null) return 0; // aborted
-    if (typeof data.count === "number") {
-      setTotalCount(data.count);
-      return data.count;
+    try {
+      const data = await fetchAPI(`/students/count?${queryParams}`, "GET", null, signal);
+      if (data && typeof data.count === "number") {
+        setTotalCount(data.count);
+        return data.count;
+      }
+    } catch (err) {
+      console.error("Failed to fetch count", err);
     }
     return 0;
   };
 
   const refreshData = async (signal) => {
-    const filters = { name: searchNameQuery, subject: subjectSelected, minG: gradeMin, maxG: gradeMax };
-    const count = await fetchCount(filters, signal);
-    if (signal?.aborted) return;
+    setIsLoading(true);
+    try {
+      const filters = { name: searchNameQuery, subject: subjectSelected, minG: gradeMin, maxG: gradeMax };
+      
+      // Fetch count first to know if we have data to fetch
+      const count = await fetchCount(filters, signal);
 
-    if (count > 0) {
-      await fetchStudents({ page: 1, ...filters, signal });
-    } else {
-      setStudents([]);
+      if (signal?.aborted) return;
+
+      // If count is 0, we immediately know there's nothing to show
+      if (count > 0) {
+        await fetchStudents({ page: 1, ...filters, signal });
+      } else {
+        setStudents([]);
+        setCurrentPage(1);
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error("Refresh failed", err);
+        setStudents([]);
+      }
+    } finally {
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -153,36 +179,8 @@ export default function StudentsTable() {
     fetchStudents({ page: 1, sort: newSort });
   };
 
-  // Pagination logic: mimicing the range-based style from the photo
-  const getPaginationItems = () => {
-    const range = [];
-    if (totalPages <= 10) {
-      for (let i = 1; i <= totalPages; i++) range.push(i);
-      return range;
-    }
-
-    // Show first 4, dots, last 4 (as seen in photo)
-    if (currentPage <= 3) {
-      return [1, 2, 3, 4, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    }
-    
-    if (currentPage >= totalPages - 2) {
-      return [1, 2, 3, 4, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    }
-
-    // Middle case
-    return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
-  };
-
-  const paginationItems = getPaginationItems();
-
-
-
-
   const stats = [
     { label: "Total Registry", value: totalCount, icon: <UserSearch className="text-indigo-400" size={24} />, color: "from-indigo-600/20 to-indigo-900/20", border: "border-indigo-500/30" },
-    { label: "Compliance Rate", value: `${totalCount > 0 ? Math.round(students.filter(s => s.grade >= 50).length / (students.length || 1) * 100) : 0}%`, icon: <ArrowUp className="text-emerald-400" size={24} />, color: "from-emerald-600/20 to-emerald-900/20", border: "border-emerald-500/30" },
-    { label: "Global Average", value: `${Math.round(students.reduce((acc, curr) => acc + curr.grade, 0) / (students.length || 1))}%`, icon: <ArrowUpDown className="text-purple-400" size={24} />, color: "from-purple-600/20 to-purple-900/20", border: "border-purple-500/30" },
   ];
 
   const getInitials = (name) => {
@@ -200,11 +198,9 @@ export default function StudentsTable() {
   return (
     <section>
       {/* Analytics Command Center */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         {stats.map((stat, i) => (
-          <div key={i} className={cn("relative overflow-hidden p-8 rounded-[2.5rem] border bg-gradient-to-br transition-all hover:scale-[1.02] cursor-default", stat.color, stat.border)}>
-            <div className="flex items-center gap-6">
-              <div className="w-17 h-17 p-2 rounded-[1.25rem] bg-white/5 flex items-center justify-center border border-white/10 shadow-2xl backdrop-blur-md">
+          <div key={i} className={cn("flex items-center justify-center p-8 rounded-[2.5rem] border bg-gradient-to-br transition-all hover:scale-[1.02] cursor-default mb-12", stat.color, stat.border)}>
+              <div className="w-17 h-17 p-2 rounded-[1.25rem] bg-white/5 flex items-center justify-center border border-white/10 shadow-2xl backdrop-blur-md mr-4">
                 {stat.icon}
               </div>
               <div className="flex flex-col justify-center">
@@ -212,9 +208,7 @@ export default function StudentsTable() {
                 <p className="text-2xl font-black text-white tracking-tighter leading-none">{stat.value}</p>
               </div>
             </div>
-          </div>
         ))}
-      </div>
 
       <div className="flex flex-col xl:flex-row xl:items-stretch gap-4 mb-12">
         <div className="bg-white/[0.03] border border-white/10 p-7 rounded-[2.5rem] flex flex-col flex-1 min-h-[160px] hover:bg-white/[0.05] transition-all group">

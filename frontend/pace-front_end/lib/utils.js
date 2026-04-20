@@ -19,11 +19,15 @@ async function fetchAPI(path, method, body, signal) {
 
   try {
     const res = await fetch(BASE_URL + path, options);
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+    }
     return await res.json();
   } catch (err) {
     if (err.name === "AbortError") return null; // request was intentionally cancelled
     console.error("Fetch error:", err);
-    return null;
+    throw err; // Re-throw to let component handle it
   }
 }
 

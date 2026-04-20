@@ -1,11 +1,13 @@
-import React, { useState } from "react";
-import { motion } from "motion/react";
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { useDropzone } from "react-dropzone";
 import { Play, Upload } from "lucide-react";
 import { cn, uploadChunk, connectWS } from "../lib/utils";
 import fetchAPI from "../lib/utils";
 import File from "./File";
+import DuplicateFileDialog from "./DuplicateFileDialog";
 import { useNotification } from "../context/NotificationContext";
+import { useFiles } from "../context/FileContext";
 
 /**
  * UploadSection Component
@@ -13,174 +15,352 @@ import { useNotification } from "../context/NotificationContext";
  * and WebSocket-driven processing progress updates.
  */
 export default function UploadSection() {
-  const [files, setFiles] = useState([]);
+  const { files, addFile, updateFile, removeFile, replaceFile, getFileByName, isHydrated } = useFiles();
+  const [duplicateQueue, setDuplicateQueue] = useState([]);
+  const [duplicateQueueTotal, setDuplicateQueueTotal] = useState(0);
+  const [currentDuplicate, setCurrentDuplicate] = useState(null);
   const chunkSize = 5 * 1024 * 1024; // 5 MB
   const { showNotification } = useNotification();
 
-  // ─── Drop handler ──────────────────────────────────────────────────────────
-  const onDrop = React.useCallback(acceptedFiles => {
-    setFiles(prev => {
-      const updatedFiles = [...prev];
-      acceptedFiles.forEach(file => {
-        const sizeMB = file.size / (1024 * 1024);
-        const expectedTimeMs = Math.max(2000, sizeMB * 500);
+  // ─── Resume in-progress uploads on component mount ───────────────────────
+  useEffect(() => {
+    if (!isHydrated) return;
 
-        const newFile = {
-          id: `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          name: file.name,
-          size: file.size,
-          status: "Pending",
-          progress_upload: 0,
-          progress_processing: 0,
-          expectedTimeMs,
-          startedAt: null,
-          completedAt: null,
-          uploadStartedAt: null,
-          uploadCompletedAt: null,
-          processStartedAt: null,
-          processCompletedAt: null,
-          file,
-        };
+    const inProgressFiles = files.filter(f => 
+      (f.status === "Uploading" || f.status === "Processing") && f.id
+    );
 
-        const existingIndex = updatedFiles.findIndex(f => f.name === file.name);
-        if (existingIndex !== -1) {
-          updatedFiles[existingIndex] = newFile;
-        } else {
-          updatedFiles.push(newFile);
+    inProgressFiles.forEach(file => {
+      // Reconnect WebSocket for in-progress files
+      const ws = connectWS(file.id);
+      let wsErrorHandled = false;
+      const wsTimeout = setTimeout(() => {
+        if (!wsErrorHandled) {
+          wsErrorHandled = true;
+          console.error("WebSocket timeout for resumed file:", file.name);
         }
-      });
-      return updatedFiles;
-    });
-  }, []);
+      }, 15000);
 
-  // ─── Remove pending file ───────────────────────────────────────────────────
-  const removeFile = (id) => {
-    setFiles(prev => prev.filter(f => f.id !== id));
+      ws.onmessage = (event) => {
+        clearTimeout(wsTimeout);
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type !== "progress" || data.job_id !== file.id) return;
+
+          const prog = data.progress;
+
+          updateFile(file.id, {
+            progress_upload: prog.upload_pct !== undefined ? Math.round(prog.upload_pct) : undefined,
+            progress_processing: prog.process_pct !== undefined ? Math.round(prog.process_pct) : undefined,
+            status:
+              prog.stage === "uploading"
+                ? "Uploading"
+                : prog.stage === "parsing" || prog.stage === "moving"
+                ? "Processing"
+                : prog.stage === "complete"
+                ? "Complete"
+                : undefined,
+          });
+
+          if (prog.stage === "complete") {
+            setTimeout(() => ws.close(), 1000);
+            showNotification({ message: `${file.name} processed successfully`, type: "success" });
+          }
+        } catch (err) {
+          console.error("Error processing resumed message:", err);
+        }
+      };
+
+      ws.onerror = () => {
+        clearTimeout(wsTimeout);
+        if (!wsErrorHandled) {
+          wsErrorHandled = true;
+          console.error("WebSocket error for resumed file:", file.name);
+        }
+      };
+    });
+  }, [isHydrated, files, updateFile, showNotification]);
+
+  // ─── Process duplicate queue ──────────────────────────────────────────────
+  useEffect(() => {
+    if (duplicateQueue.length > 0 && !currentDuplicate) {
+      setCurrentDuplicate(duplicateQueue[0]);
+    }
+  }, [duplicateQueue, currentDuplicate]);
+
+  // ─── Drop handler with duplicate detection ────────────────────────────────
+  const onDrop = React.useCallback(acceptedFiles => {
+    const duplicates = [];
+    
+    acceptedFiles.forEach(file => {
+      const existingFile = getFileByName(file.name);
+      
+      if (existingFile && existingFile.status === "Pending") {
+        // Queue this duplicate for confirmation
+        duplicates.push(file);
+      } else if (existingFile && existingFile.status !== "Pending") {
+        // Completed files can be replaced without confirmation
+        const newFile = createFileObject(file);
+        replaceFile(existingFile.id, newFile);
+        showNotification({ message: `${file.name} re-added for processing`, type: "info" });
+      } else {
+        // New file
+        const newFile = createFileObject(file);
+        addFile(newFile);
+        showNotification({ message: `${file.name} added`, type: "info" });
+      }
+    });
+
+    // Add all duplicates to queue
+    if (duplicates.length > 0) {
+      setDuplicateQueue(prev => [...prev, ...duplicates]);
+      setDuplicateQueueTotal(prev => prev + duplicates.length);
+    }
+  }, [getFileByName, addFile, replaceFile, showNotification]);
+
+  const createFileObject = (file) => {
+    const sizeMB = file.size / (1024 * 1024);
+    const expectedTimeMs = Math.max(2000, sizeMB * 500);
+
+    return {
+      id: `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      name: file.name,
+      size: file.size,
+      status: "Pending",
+      progress_upload: 0,
+      progress_processing: 0,
+      expectedTimeMs,
+      startedAt: null,
+      completedAt: null,
+      uploadStartedAt: null,
+      uploadCompletedAt: null,
+      processStartedAt: null,
+      processCompletedAt: null,
+      file,
+      error: null,
+    };
   };
 
-  // ─── Chunked upload with real progress ────────────────────────────────────
+  const handleDuplicateConfirm = (confirmed) => {
+    if (confirmed && currentDuplicate) {
+      const existingFile = getFileByName(currentDuplicate.name);
+      if (existingFile) {
+        const newFile = createFileObject(currentDuplicate);
+        replaceFile(existingFile.id, newFile);
+        showNotification({ message: `${currentDuplicate.name} will be replaced`, type: "warning" });
+      }
+    }
+    
+    // Move to next duplicate in queue
+    setDuplicateQueue(prev => prev.slice(1));
+    setCurrentDuplicate(null);
+  };
+
+  // ─── Remove pending file ───────────────────────────────────────────────────
+  // Removed - now using removeFile from FileContext
+
+  // ─── Chunked upload with error handling ────────────────────────────────────
   /**
-   * Uploads `fileObj.file` in chunks, updating `progress_upload` in state
-   * after every chunk using a weighted average across total bytes.
+   * Uploads `fileObj.file` in chunks. Progress updates are sent from backend via WebSocket.
    */
   const uploadFile = async (fileObj) => {
     const file = fileObj.file;
     const totalChunks = Math.ceil(file.size / chunkSize);
 
-    for (let i = 0; i < totalChunks; i++) {
-      const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize);
+    try {
+      for (let i = 0; i < totalChunks; i++) {
+        const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize);
 
-      await uploadChunk({
-        chunk,
-        chunkIndex: i,
-        totalChunks,
-        fileName: file.name,
-        fileId: fileObj.id,
-        onProgress: (chunkPct) => {
-          // Overall progress = completed chunks + current chunk fraction
-          const overall = Math.round(((i + chunkPct / 100) / totalChunks) * 100);
-          setFiles(prev => prev.map(f =>
-            f.id === fileObj.id ? { ...f, progress_upload: overall } : f
-          ));
-        },
+        await uploadChunk({
+          chunk,
+          chunkIndex: i,
+          totalChunks,
+          fileName: file.name,
+          fileId: fileObj.id,
+        });
+      }
+      // Progress now sent from backend via WebSocket
+    } catch (err) {
+      updateFile(fileObj.id, {
+        error: err.message || "Upload failed",
+        status: "Error",
       });
+      
+      if (err.message && err.message.includes("Network")) {
+        showNotification({
+          message: `Network error uploading ${file.name}. Please check your connection.`,
+          type: "error",
+          duration: 6000,
+        });
+      } else {
+        showNotification({
+          message: `Failed to upload ${file.name}: ${err.message || "Unknown error"}`,
+          type: "error",
+          duration: 6000,
+        });
+      }
+      throw err;
     }
-
-    // Mark upload at 100% when all chunks are done
-    setFiles(prev => prev.map(f =>
-      f.id === fileObj.id ? { ...f, progress_upload: 100 } : f
-    ));
   };
 
-  // ─── Start pipeline ────────────────────────────────────────────────────────
+  // ─── Start pipeline with comprehensive error handling ──────────────────────
   const startUpload = async () => {
-    const pendingFiles = files.filter(f => f.status === "Pending");
+    let pendingFiles = files.filter(f => f.status === "Pending");
     if (pendingFiles.length === 0) return;
 
+    // Check for files without blob data (loaded from localStorage)
+    const filesWithoutBlob = pendingFiles.filter(f => !f.file);
+    const filesWithBlob = pendingFiles.filter(f => f.file);
+
+    if (filesWithoutBlob.length > 0) {
+      const fileNames = filesWithoutBlob.map(f => f.name).join(", ");
+      showNotification({
+        message: `Cannot re-upload previously saved files (${fileNames}). Please remove and re-add them.`,
+        type: "warning",
+        duration: 5000,
+      });
+      // Remove files without blob from pending list
+      pendingFiles = filesWithBlob;
+      if (pendingFiles.length === 0) return;
+    }
+
     // Phase 1: mark all pending as Uploading and open WebSockets
-    setFiles(prev => prev.map(f =>
-      f.status === "Pending"
-        ? { ...f, status: "Uploading", startedAt: Date.now(), uploadStartedAt: Date.now() }
-        : f
-    ));
+    pendingFiles.forEach(f => {
+      updateFile(f.id, { status: "Uploading", startedAt: Date.now(), uploadStartedAt: Date.now() });
+    });
 
     const activeSessions = await Promise.all(pendingFiles.map(file =>
       new Promise((resolve) => {
         const ws = connectWS(file.id);
+        let wsErrorHandled = false;
+        const wsTimeout = setTimeout(() => {
+          if (!wsErrorHandled) {
+            wsErrorHandled = true;
+            updateFile(file.id, {
+              error: "WebSocket connection timeout",
+              status: "Error",
+            });
+            showNotification({
+              message: `Connection timeout for ${file.name}. Server may be down.`,
+              type: "error",
+              duration: 6000,
+            });
+            ws.close();
+            resolve({ file, ws, error: true, errorType: "timeout" });
+          }
+        }, 15000); // 15 second timeout
 
         ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
+          clearTimeout(wsTimeout);
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type !== "progress" || data.job_id !== file.id) return;
 
-          setFiles(currentFiles => currentFiles.map(f => {
-            if (f.id !== file.id) return f;
-            const update = { ...f };
+            const prog = data.progress;
 
-            if (data.type === "upload") {
-              update.progress_upload = data.progress;
-            } else if (data.type === "processing") {
-              update.progress_processing = data.progress;
-              if (update.status !== "Processing") {
-                update.status = "Processing";
-                if (!update.processStartedAt) update.processStartedAt = Date.now();
-              }
-            } else if (data.type === "complete") {
-              update.status = "Complete";
-              update.progress_processing = 100;
-              if (!update.processCompletedAt) {
-                update.processCompletedAt = Date.now();
-                update.completedAt = Date.now();
-              }
+            // Handle completion and other state updates
+            updateFile(file.id, {
+              progress_upload: prog.upload_pct !== undefined ? Math.round(prog.upload_pct) : undefined,
+              progress_processing: prog.process_pct !== undefined ? Math.round(prog.process_pct) : undefined,
+              status:
+                prog.stage === "uploading"
+                  ? "Uploading"
+                  : prog.stage === "parsing" || prog.stage === "moving"
+                  ? "Processing"
+                  : prog.stage === "complete"
+                  ? "Complete"
+                  : undefined,
+              uploadCompletedAt:
+                prog.upload_pct === 100 && !files.find(f => f.id === file.id)?.uploadCompletedAt
+                  ? Date.now()
+                  : undefined,
+              processStartedAt:
+                (prog.stage === "parsing" || prog.stage === "moving") &&
+                !files.find(f => f.id === file.id)?.processStartedAt
+                  ? Date.now()
+                  : undefined,
+              processCompletedAt:
+                prog.stage === "complete" && !files.find(f => f.id === file.id)?.processCompletedAt
+                  ? Date.now()
+                  : undefined,
+              completedAt: prog.stage === "complete" && !files.find(f => f.id === file.id)?.completedAt ? Date.now() : undefined,
+            });
+
+            if (prog.stage === "complete") {
+              setTimeout(() => ws.close(), 1000);
+              showNotification({ message: `${file.name} processed successfully`, type: "success" });
             }
-            return update;
-          }));
+          } catch (err) {
+            console.error("Error processing message:", err);
+            updateFile(file.id, {
+              error: "Failed to parse server message",
+              status: "Error",
+            });
+          }
         };
 
         ws.onopen = async () => {
+          clearTimeout(wsTimeout);
           showNotification({ message: `Uploading ${file.name}`, type: "info" });
-          await uploadFile(file);
-          resolve({ file, ws });
+          try {
+            await uploadFile(file);
+
+            // After upload, trigger backend processing
+            fetchAPI("/process", "POST", { fileName: file.name, fileId: file.id, userId: "" })
+              .then(() => showNotification({ message: `Processing ${file.name}`, type: "info" }))
+              .catch(err => {
+                console.error("Failed to start processing for", file.name, err);
+                updateFile(file.id, {
+                  error: err.message || "Failed to start processing",
+                  status: "Error",
+                });
+                showNotification({
+                  message: `Server error processing ${file.name}. Please try again.`,
+                  type: "error",
+                  duration: 6000,
+                });
+              });
+
+            resolve({ file, ws });
+          } catch (err) {
+            // uploadFile already updated state and showed notification
+            resolve({ file, ws, error: true, errorType: "upload" });
+          }
         };
 
         ws.onerror = (err) => {
-          console.error("WS error for", file.name, err);
-          showNotification({ message: `Error uploading ${file.name}`, type: "error" });
-          resolve({ file, ws, error: true });
+          clearTimeout(wsTimeout);
+          if (!wsErrorHandled) {
+            wsErrorHandled = true;
+            console.error("WS error for", file.name, err);
+            updateFile(file.id, {
+              error: "WebSocket connection failed",
+              status: "Error",
+            });
+            showNotification({
+              message: `Connection error for ${file.name}. Check server status.`,
+              type: "error",
+              duration: 6000,
+            });
+            resolve({ file, ws, error: true, errorType: "connection" });
+          }
         };
       })
     ));
 
-    // Phase 2: trigger processing for each uploaded file
-    setFiles(prev => prev.map(f =>
-      f.status === "Uploading"
-        ? { ...f, status: "Processing", uploadCompletedAt: Date.now(), processStartedAt: Date.now() }
-        : f
-    ));
-
-    await Promise.all(activeSessions.map(({ file, ws, error }) => {
-      if (error) return Promise.resolve();
-
-      return new Promise((resolve) => {
-        const handleMsg = (event) => {
-          const data = JSON.parse(event.data);
-          if (data.type === "complete") {
-            ws.removeEventListener("message", handleMsg);
-            setTimeout(() => { ws.close(); resolve(); }, 100);
-            showNotification({ message: `${file.name} processed successfully`, type: "success" });
-          }
-        };
-        ws.addEventListener("message", handleMsg);
-
-        showNotification({ message: `${file.name} uploaded — starting processing`, type: "success" });
-
-        fetchAPI("/process", "POST", { fileName: file.name, fileId: file.id })
-          .catch(err => {
-            console.error("Failed to start processing for", file.name, err);
-            resolve();
-          });
-
-        showNotification({ message: `Processing ${file.name}`, type: "info" });
-      });
-    }));
+    // Manage sessions and provide feedback
+    const errorSessions = activeSessions.filter(s => s.error);
+    if (errorSessions.length > 0) {
+      const errorCount = errorSessions.length;
+      const successCount = activeSessions.length - errorCount;
+      if (successCount > 0) {
+        showNotification({
+          message: `${successCount} file(s) queued, ${errorCount} failed. Check details above.`,
+          type: "warning",
+          duration: 5000,
+        });
+      }
+    }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -237,6 +417,21 @@ export default function UploadSection() {
           Start Processing Pipeline
         </motion.button>
       )}
+
+      <AnimatePresence>
+        {currentDuplicate && (
+          <DuplicateFileDialog
+            fileName={currentDuplicate.name}
+            currentIndex={duplicateQueueTotal - duplicateQueue.length + 1}
+            total={duplicateQueueTotal}
+            onConfirm={handleDuplicateConfirm}
+            onCancel={() => {
+              setDuplicateQueue(prev => prev.slice(1));
+              setCurrentDuplicate(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }

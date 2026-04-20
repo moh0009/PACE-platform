@@ -1,9 +1,9 @@
 import React from "react";
 import { motion } from "motion/react";
-import { Database, X, Clock, ArrowUpCircle, Cpu, FileText } from "lucide-react";
+import { Database, X, Clock, ArrowUpCircle, Cpu, FileText, AlertCircle, RotateCcw } from "lucide-react";
 import { cn } from "../lib/utils";
 
-export default function File({ files, onRemove }) {
+export default function File({ files, onRemove, onRetry }) {
     if (!files || files.length === 0) return null;
 
     return (
@@ -13,6 +13,8 @@ export default function File({ files, onRemove }) {
                 const isUploading = file.status === "Uploading";
                 const isProcessing = file.status === "Processing";
                 const isPending = file.status === "Pending";
+                const isError = file.status === "Error";
+                const isSessionExpired = isPending && !file.file; // Loaded from localStorage, no blob
 
                 const formatTime = (ms) => {
                     if (ms < 1000) return `${Math.round(ms)}ms`;
@@ -47,18 +49,32 @@ export default function File({ files, onRemove }) {
                     <div key={file.id} className="relative group bg-white/[0.03] border border-white/5 rounded-3xl p-6 backdrop-blur-md hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300">
                         
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                            {isPending && (
-                                <button
-                                    onClick={() => onRemove(file.id)}
-                                    className="p-2 text-gray-500 hover:text-rose-400 hover:bg-white/10 rounded-xl transition-all"
-                                    title="Remove file"
-                                >
-                                    <X size={18} />
-                                </button>
+                            {(isPending || isError || isSessionExpired) && (
+                                <div className="flex gap-2">
+                                    {isError && onRetry && (
+                                        <button
+                                            onClick={() => onRetry(file.id)}
+                                            className="p-2 text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 rounded-xl transition-all"
+                                            title="Retry upload/processing"
+                                        >
+                                            <RotateCcw size={18} />
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => onRemove(file.id)}
+                                        className="p-2 text-gray-500 hover:text-rose-400 hover:bg-white/10 rounded-xl transition-all"
+                                        title="Remove file"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                </div>
                             )}
                             <div className={cn(
                                 "h-16 w-16 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-transform group-hover:scale-110 duration-500", 
-                                isComplete ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
+                                isComplete ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : 
+                                isError ? "bg-rose-500/20 text-rose-400 border border-rose-500/30" :
+                                isSessionExpired ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+                                "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
                             )}>
                                 <Database size={32} />
                             </div>
@@ -83,12 +99,38 @@ export default function File({ files, onRemove }) {
                                     </div>
                                     <span className={cn(
                                         "px-4 py-1.5 text-[10px] font-black rounded-xl uppercase tracking-widest border shadow-lg sm:self-center self-start",
+                                        isSessionExpired ? "bg-amber-600/20 text-amber-400 border-amber-500/30" :
                                         isPending ? "bg-gray-800 text-gray-400 border-gray-700" :
+                                            isError ? "bg-rose-600/20 text-rose-400 border-rose-500/30" :
                                             isUploading || isProcessing ? "bg-indigo-600/20 text-indigo-400 border-indigo-500/30 animate-pulse" : "bg-emerald-600/20 text-emerald-400 border-emerald-500/30"
                                     )}>
-                                        {file.status}
+                                        {isSessionExpired ? "Session Expired" : file.status}
                                     </span>
                                 </div>
+
+                                {isSessionExpired && (
+                                    <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-2">
+                                        <AlertCircle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-amber-300 font-medium">
+                                            Page was reloaded. Please remove and re-add this file to upload it.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {isError && file.error && (
+                                    <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-2xl">
+                                        <p className="text-xs text-rose-300 font-medium mb-2">{file.error}</p>
+                                        {onRetry && (
+                                            <button
+                                                onClick={() => onRetry(file.id)}
+                                                className="text-xs font-bold text-amber-400 hover:text-amber-300 px-3 py-1.5 bg-amber-400/10 hover:bg-amber-400/20 rounded-lg border border-amber-400/30 transition-all inline-flex items-center gap-1.5"
+                                            >
+                                                <RotateCcw size={14} />
+                                                Retry
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
 
                                 <div className="space-y-6">
                                     {/* Stages Summary */}
