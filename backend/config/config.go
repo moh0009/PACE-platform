@@ -55,7 +55,7 @@ func (c *Config) InitDatabase() *pgxpool.Pool {
 func initSchema(pool *pgxpool.Pool) {
 	query := `
 		CREATE TABLE IF NOT EXISTS students_staging (
-			id SERIAL PRIMARY KEY,
+			id TEXT,
 			name TEXT,
 			subject TEXT,
 			grade TEXT
