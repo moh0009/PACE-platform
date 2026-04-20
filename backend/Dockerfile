@@ -1,5 +1,5 @@
 # ─── Stage 1: Build ───────────────────────────────────────────────────────────
-FROM golang:1.24-alpine AS builder
+FROM golang:alpine AS builder
 
 # Install upx to compress the binary
 RUN apk add --no-cache upx
