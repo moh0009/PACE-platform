@@ -62,7 +62,7 @@ func (h *Handler) ProcessFileWithRedis(ctx context.Context, job *queue.ProcessJo
 	tracker := NewProgressTracker(h.ProgressHub, job.ID)
 	defer tracker.Complete()
 
-	filePath := filepath.Join("./uploads", job.FileName)
+	filePath := filepath.Join(h.Cfg.UploadsDir, job.FileName)
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("open uploaded file %q: %w", job.FileName, err)

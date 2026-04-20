@@ -11,7 +11,7 @@ services:
     volumes:
       - local_pgdata:/var/lib/postgresql
     networks:
-      - db_network
+      - pace_network
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin4_container
@@ -24,7 +24,7 @@ services:
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     networks:
-      - db_network
+      - pace_network
 
   redis:
     image: redis:latest
@@ -34,7 +34,7 @@ services:
     volumes:
       - redis-data:/data
     networks:
-      - db_network
+      - pace_network
 
 volumes:
   local_pgdata:
@@ -42,4 +42,4 @@ volumes:
   redis-data:
 
 networks:
-  db_network:
+  pace_network:
