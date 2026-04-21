@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useDropzone } from "react-dropzone";
-import { Play, Upload } from "lucide-react";
+import { Play, Upload, Trash2 } from "lucide-react";
 import { cn, uploadChunk, isNetworkError } from "../lib/utils";
 import fetchAPI from "../lib/utils";
 import { ManagedWebSocket } from "../lib/websocket";
@@ -285,6 +285,17 @@ export default function UploadSection() {
     }
   };
 
+  const clearProcessedFiles = () => {
+    const processedFiles = files.filter(f => f.status === "Complete" || f.status === "Error");
+    processedFiles.forEach(f => removeFile(f.id));
+    const count = processedFiles.length;
+    if (count > 0) {
+      showNotification({ message: `Cleared ${count} processed file(s)`, type: "info" });
+    }
+  };
+
+  const hasProcessedFiles = files.some(f => f.status === "Complete" || f.status === "Error");
+
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     accept: { 'text/csv': ['.csv'] },
@@ -378,6 +389,18 @@ export default function UploadSection() {
               setCurrentDuplicate(null);
             }}
           />
+        )}
+        {hasProcessedFiles && (
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={clearProcessedFiles}
+            aria-label="Clear Processed Files"
+            className="w-full sm:w-auto mt-4 bg-red-600 text-white px-10 py-5 rounded-2xl font-black text-xl shadow-[0_0_30px_rgba(220,38,38,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
+          >
+            <Trash2 size={20} aria-hidden="true" />
+            Clear Processed Files
+          </motion.button>
         )}
       </AnimatePresence>
     </section>
