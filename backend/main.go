@@ -67,11 +67,11 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	router.GET("/ws/progress", handler.HandleProgressWS)
 	// API routes for file upload and processing
 	api := router.Group("/api")
 	api.POST("/upload", handler.UploadFiles)
 	api.POST("/process", handler.ProcessPost)
+	api.GET("/ws/progress", handler.HandleProgressWS)
 
 	// Student management routes
 	students := api.Group("/students")

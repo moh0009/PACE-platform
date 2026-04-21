@@ -5,8 +5,8 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-const BASE_URL = "/api";
-const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL;
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/api";
 
 // ─── Error classification helpers ────────────────────────────────────────────
 
