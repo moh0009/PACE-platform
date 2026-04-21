@@ -15,9 +15,7 @@ COPY . .
 
 # Build a statically-linked binary and compress it with UPX.
 # -ldflags "-s -w" removes symbol tables and debug information.
-RUN go build -ldflags="-s -w" -o server . \
-    && upx --best --lzma server
-
+RUN GIN_MODE=release go build -ldflags="-s -w" -o server .
 # ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM gcr.io/distroless/static-debian12
 
