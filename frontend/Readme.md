@@ -25,17 +25,30 @@ The frontend is a Next.js 15 (App Router) application that provides the PACE Pla
 
 ## Environment Variables
 
-| Variable              | Default                     | Description                    |
-| --------------------- | --------------------------- | ------------------------------ |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8080/api` | Base URL of the Go backend API |
+The frontend has a single environment variable that controls the backend API connection:
 
-Create a `.env.local` file in `frontend/pace-front_end/` if you need to override the default:
+| Variable              | Default                     | Required | Description                                                              |
+| --------------------- | --------------------------- | -------- | ------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8080/api` | No       | Base URL of the Go backend API. Update this when deploying to production. |
 
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8080/api
-```
+### Setup Instructions
 
-> **Note**: `lib/utils.js` currently hard-codes `http://localhost:8080/api`. If you add the env variable, update that file to read `process.env.NEXT_PUBLIC_API_URL`.
+1. **For Local Development** (no action required)
+   - The default value `http://localhost:8080/api` will be used automatically.
+   - The backend must be running on `http://localhost:8080` for uploads and API calls to work.
+
+2. **For Custom/Production Deployments**
+   - Create a `.env.local` file in `frontend/pace-front_end/`:
+   ```env
+   NEXT_PUBLIC_API_URL=https://your-api-domain.com/api
+   ```
+   - This value is embedded at build time, so you must rebuild the application if you change it.
+
+### Important Notes
+
+- The `NEXT_PUBLIC_` prefix makes this variable accessible in the browser. All values are visible in the client-side bundle.
+- WebSocket connections use the same base URL with `wss://` or `ws://` (automatic protocol conversion based on page protocol).
+- In development, the frontend runs on `http://localhost:3000` while the backend runs on `http://localhost:8080`.
 
 ---
 

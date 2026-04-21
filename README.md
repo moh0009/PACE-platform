@@ -79,24 +79,57 @@ then open **http://localhost:3000** in your browser.
 
 ---
 
+## Performance Metrics
+
+The following metrics describe the time required to upload and process file data:
+
+| Operation | Rate |
+| --- | --- |
+| File uploading | **0.5 seconds per MB** |
+| File processing (CSV ingestion) | **75 seconds per MB** |
+
+**Example:**
+- A 10 MB file would take ~5 seconds to upload and ~750 seconds (~12.5 minutes) to process.
+- Multiple files are processed concurrently via the worker pool, so total processing time depends on `WORKER_COUNT`.
+
+---
+
 ## Configuration & Environment
 
 ### Backend
 
-Create a `.env` file in `backend/` or export variables directly:
+Create a `.env` file in `backend/` with the following variables. See [`backend/Readme.md`](backend/Readme.md) for detailed descriptions of each variable.
 
 ```env
+# Database Configuration
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=your_secure_password
 DB_NAME=students_db
+
+# Redis Configuration
 REDIS_ADDR=localhost:6379
+REDIS_PASSWORD=
+
+# Server Configuration
 SERVER_PORT=8080
+
+# File Upload Configuration
 UPLOADS_DIR=./uploads
 MAX_FILE_SIZE=2147483648
+
+# Processing Configuration
 WORKER_COUNT=4
 QUEUE_MAX_RETRIES=3
+```
+
+### Frontend
+
+Create a `.env.local` file in `frontend/pace-front_end/` (optional, as it has a default value):
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8080/api
 ```
 
 ### Frontend

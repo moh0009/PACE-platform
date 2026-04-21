@@ -41,11 +41,24 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: "postgres://root:toor@db:5432/pace_db?pool_max_conns=40&pool_min_conns=10"
+      # Database Configuration
+      DB_HOST: "db"
+      DB_PORT: "5432"
+      DB_USER: "root"
+      DB_PASSWORD: "toor"
+      DB_NAME: "pace_db"
+      # Redis Configuration
       REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ""
+      # Server Configuration
       SERVER_PORT: "8080"
+      # File Upload Configuration
       UPLOADS_DIR: "/tmp/uploads"
-      ENVIRONMENT: "docker"
+      MAX_FILE_SIZE: "2147483648"
+      CHUNK_SIZE: "5242880"
+      # Processing Configuration
+      WORKER_COUNT: "4"
+      QUEUE_MAX_RETRIES: "3"
     depends_on:
       db:
         condition: service_healthy

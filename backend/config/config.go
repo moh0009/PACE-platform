@@ -2,12 +2,14 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -25,19 +27,46 @@ type Config struct {
 }
 
 func Load() *Config {
+	// Load .env file if it exists (useful for local development)
+	// Ignore error if .env doesn't exist (for Docker/production environments)
+	_ = godotenv.Load()
+
+	// Determine database URL: support both individual DB_* vars and DATABASE_URL
+	databaseURL := buildDatabaseURL()
+
 	cfg := &Config{
-		DatabaseURL:     getEnv("DATABASE_URL", "postgres://root:toor@localhost:5432/pace_db?pool_max_conns=40&pool_min_conns=10&statement_timeout=30000"),
+		DatabaseURL:     databaseURL,
 		RedisAddr:       getEnv("REDIS_ADDR", "localhost:6379"),
 		RedisPassword:   getEnv("REDIS_PASSWORD", ""),
 		ServerPort:      getEnv("SERVER_PORT", "8080"),
 		UploadsDir:      getEnv("UPLOADS_DIR", "./uploads"),
-		MaxFileSize:     getEnvInt64("MAX_FILE_SIZE", 100*1024*1024), // 100MB
-		ChunkSize:       getEnvInt64("CHUNK_SIZE", 5*1024*1024),      // 5MB
-		WorkerCount:     getEnvInt("WORKER_COUNT", 8),
+		MaxFileSize:     getEnvInt64("MAX_FILE_SIZE", 2147483648), // 2GB
+		ChunkSize:       getEnvInt64("CHUNK_SIZE", 5*1024*1024),   // 5MB
+		WorkerCount:     getEnvInt("WORKER_COUNT", 4),
 		QueueMaxRetries: getEnvInt("QUEUE_MAX_RETRIES", 3),
 		HeartbeatTTL:    getEnvDuration("HEARTBEAT_TTL", 30*time.Second),
 	}
 	return cfg
+}
+
+// buildDatabaseURL constructs PostgreSQL connection string from individual DB_* vars or uses DATABASE_URL
+func buildDatabaseURL() string {
+	// If DATABASE_URL is explicitly set, use it
+	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+		return dbURL
+	}
+
+	// Otherwise, build from individual DB_* variables
+	dbHost := getEnv("DB_HOST", "localhost")
+	dbPort := getEnv("DB_PORT", "5432")
+	dbUser := getEnv("DB_USER", "postgres")
+	dbPassword := getEnv("DB_PASSWORD", "postgres")
+	dbName := getEnv("DB_NAME", "students_db")
+
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?pool_max_conns=40&pool_min_conns=10&statement_timeout=30000",
+		dbUser, dbPassword, dbHost, dbPort, dbName,
+	)
 }
 
 func (c *Config) InitDatabase() *pgxpool.Pool {

@@ -27,21 +27,72 @@ The Go backend serves the REST API, handles chunked file uploads, streams progre
 
 ## Environment Variables
 
-| Variable            | Default          | Description                        |
-| ------------------- | ---------------- | ---------------------------------- |
-| `DB_HOST`           | `localhost`      | PostgreSQL host                    |
-| `DB_PORT`           | `5432`           | PostgreSQL port                    |
-| `DB_USER`           | `postgres`       | Database user                      |
-| `DB_PASSWORD`       | `postgres`       | Database password                  |
-| `DB_NAME`           | `students_db`    | Database name                      |
-| `REDIS_ADDR`        | `localhost:6379` | Redis address                      |
-| `SERVER_PORT`       | `8080`           | HTTP listen port                   |
-| `UPLOADS_DIR`       | `./uploads`      | Temp storage for uploaded chunks   |
-| `MAX_FILE_SIZE`     | `2147483648`     | Max per-chunk size in bytes (2 GB) |
-| `WORKER_COUNT`      | `4`              | Parallel CSV processing workers    |
-| `QUEUE_MAX_RETRIES` | `3`              | Max job retry attempts on failure  |
+All environment variables are **required** unless marked as optional. Create a `.env` file in the `backend/` directory or export them manually.
 
-Copy `.env.example` (if provided) or export the variables manually.
+### Database Configuration
+
+| Variable       | Default       | Description                                                 |
+| -------------- | ------------- | ----------------------------------------------------------- |
+| `DB_HOST`      | `localhost`   | PostgreSQL host address                                     |
+| `DB_PORT`      | `5432`        | PostgreSQL port                                             |
+| `DB_USER`      | `postgres`    | Database user (must exist in PostgreSQL)                    |
+| `DB_PASSWORD`  | `postgres`    | Database password for the user                              |
+| `DB_NAME`      | `students_db` | Database name (will be created if it doesn't exist)         |
+
+### Redis Configuration
+
+| Variable          | Default          | Description                              |
+| ----------------- | ---------------- | ---------------------------------------- |
+| `REDIS_ADDR`      | `localhost:6379` | Redis server address and port            |
+| `REDIS_PASSWORD`  | (empty)          | Redis password (optional, leave blank if auth is disabled) |
+
+### Server Configuration
+
+| Variable     | Default | Description                                   |
+| ------------ | ------- | --------------------------------------------- |
+| `SERVER_PORT` | `8080`  | Port on which the Go API server will listen   |
+
+### File Upload Configuration
+
+| Variable       | Default      | Description                                                 |
+| -------------- | ------------ | ----------------------------------------------------------- |
+| `UPLOADS_DIR`  | `./uploads`  | Directory for temporarily storing uploaded chunks           |
+| `MAX_FILE_SIZE` | `2147483648` | Maximum file size in bytes (default: 2 GB)                  |
+
+### Processing Configuration
+
+| Variable            | Default | Description                                                                                                |
+| ------------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
+| `WORKER_COUNT`      | `4`     | Number of parallel worker goroutines for CSV processing. Higher values increase concurrency but use more memory. |
+| `QUEUE_MAX_RETRIES` | `3`     | Maximum number of retry attempts for a failed job before it is marked as permanently failed                |
+
+### Example Configuration
+
+Copy the template below to `.env` and adjust values as needed:
+
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=secure_password_here
+DB_NAME=students_db
+
+# Redis
+REDIS_ADDR=localhost:6379
+REDIS_PASSWORD=
+
+# Server
+SERVER_PORT=8080
+
+# File Upload
+UPLOADS_DIR=./uploads
+MAX_FILE_SIZE=2147483648
+
+# Processing
+WORKER_COUNT=4
+QUEUE_MAX_RETRIES=3
+```
 
 ---
 
