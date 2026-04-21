@@ -15,17 +15,17 @@ import (
 )
 
 func GetCORSOrigins() []string {
-	if os.Getenv("ENVIRONMENT") == "docker" {
-		// In Docker, frontend service is accessible by its service name
-		return []string{
-			"http://frontend:3000",
-			"http://frontend:3001",
-		}
-	}
-	// Local development
+	// Always include localhost for browser access via port mapping
+	// Also include service name for container-to-container communication
 	return []string{
 		"http://localhost:3000",
 		"http://localhost:3001",
+		"http://frontend:3000",
+		"http://frontend:3001",
+		"https://localhost:3000",
+		"https://localhost:3001",
+		"https://frontend:3000",
+		"https://frontend:3001",
 	}
 }
 
@@ -50,7 +50,7 @@ func main() {
 	// Setup CORS with security restrictions (restrict to specific origins in production)
 	corsConfig := cors.Config{
 		AllowOrigins:     GetCORSOrigins(),
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
 	}

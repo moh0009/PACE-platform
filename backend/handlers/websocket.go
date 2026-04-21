@@ -10,10 +10,22 @@ import (
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		// TODO: In production, validate origin against allowed domains
-		// For now, allowing localhost for development
+		// Allow both localhost (local dev) and Docker network origins
 		origin := r.Header.Get("Origin")
-		return origin == "http://localhost:3000" || origin == "http://localhost:3001"
+		allowedOrigins := []string{
+			"http://localhost:3000",
+			"http://localhost:3001",
+			"http://frontend:3000",
+			"http://frontend:3001",
+			"https://frontend:3000",
+			"https://frontend:3001",
+		}
+		for _, allowed := range allowedOrigins {
+			if origin == allowed {
+				return true
+			}
+		}
+		return false
 	},
 	Error: func(w http.ResponseWriter, r *http.Request, status int, reason error) {
 		fmt.Printf("WebSocket upgrade error: status=%d, reason=%v\n", status, reason)
