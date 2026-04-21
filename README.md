@@ -4,6 +4,22 @@ A full-stack web application that ingests large CSV files containing student gra
 
 ---
 
+## Screenshots
+
+### Uploading a file and Processing it
+
+![alt text](readme_media/one.png)
+![alt text](readme_media/three.png)
+
+### Students table
+
+![alt text](readme_media/two.png)
+![alt text](readme_media/four.png)
+
+## Video Demo
+
+![](readme_media/video_demo.mp4)
+
 ## Features
 
 | Feature                | Detail                                                                    |
@@ -85,12 +101,13 @@ then open **http://localhost:3000** in your browser.
 
 The following metrics describe the time required to upload and process file data with 4 workers:
 
-| Operation | Rate |
-| --- | --- |
-| File uploading | **0.5 seconds per MB** |
-| File processing (CSV ingestion) | **75 seconds per MB** |
+| Operation                       | Rate                   |
+| ------------------------------- | ---------------------- |
+| File uploading                  | **0.5 seconds per MB** |
+| File processing (CSV ingestion) | **75 seconds per MB**  |
 
 **Example:**
+
 - A 10 MB file would take ~5 seconds to upload and ~750 seconds (~12.5 minutes) to process.
 - Multiple files are processed concurrently via the worker pool, so total processing time depends on `WORKER_COUNT`.
 
