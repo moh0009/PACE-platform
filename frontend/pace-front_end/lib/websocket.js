@@ -17,7 +17,8 @@
  *   ws.destroy();
  */
 
-const WS_BASE_URL = "ws://localhost:8080";
+let WS_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "ws://localhost:8080";
+WS_BASE_URL = WS_BASE_URL.replace(/^http/, "ws");
 
 export class ManagedWebSocket {
   /**
