@@ -9,7 +9,7 @@ const navItems = [
   { name: "Students", icon: Users },
 ];
 
-const repoUrl = "https://github.com/moh0009/file-upload-fullstack-task";
+const repoUrl = "https://github.com/moh0009/PACE-Platform";
 
 export default function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen }) {
   const SidebarContent = () => (
