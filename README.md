@@ -17,9 +17,7 @@ A full-stack web application that ingests large CSV files containing student gra
 
 ## Video Demo
 
-<video width="1080" height="720" controls>
-  <source src="./readme_media/video_demo.mp4" type="video/mp4">
-</video>
+https://github.com/user-attachments/assets/72b8eaae-a9c1-4c86-9ecb-add63b1e0771
 
 ## Features
 
