@@ -38,8 +38,8 @@ you can run the whole app using docker compose :
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/moh0009/file-upload-fullstack-task.git
-cd file-upload-fullstack-task
+git clone https://github.com/moh0009/PACE-platform.git
+cd PACE-paltfrom
 
 # 2. Start the docker compose
 docker compose up -d
@@ -49,8 +49,8 @@ docker compose up -d
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/moh0009/file-upload-fullstack-task.git
-cd file-upload-fullstack-task
+git clone https://github.com/moh0009/PACE-platform.git
+cd PACE-paltfrom
 ```
 
 if you don't have redis, or postgres installed locally you can use docker compose to start them
@@ -60,6 +60,8 @@ if you don't have redis, or postgres installed locally you can use docker compos
 cd backend
 docker compose up -d
 ```
+
+make sure you create `.env` in `/backend` as showed [here](#configuration--environment)
 
 then start the backend and frontend
 
@@ -81,7 +83,7 @@ then open **http://localhost:3000** in your browser.
 
 ## Performance Metrics
 
-The following metrics describe the time required to upload and process file data:
+The following metrics describe the time required to upload and process file data with 4 workers:
 
 | Operation | Rate |
 | --- | --- |
@@ -168,24 +170,6 @@ CGO_ENABLED=0 GOOS=linux go build -o server .
 cd frontend/pace-front_end
 npm run build
 npm run start
-```
-
-### Bundle Analysis
-
-To check your JavaScript bundle size:
-
-```bash
-cd frontend/pace-front_end
-npm run analyze
-```
-
-### Health Check
-
-The backend exposes a `/ping` endpoint.
-
-```bash
-curl http://localhost:8080/ping
-# Returns: {"status": "ok"}
 ```
 
 ---
