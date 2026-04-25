@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: toor
       POSTGRES_DB: pace_db
     volumes:
-      - local_pgdata:/var/lib/postgresql/data
+      - local_pgdata:/var/lib/postgresql
     networks:
       - pace_network
     healthcheck:
